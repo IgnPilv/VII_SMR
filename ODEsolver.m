@@ -39,40 +39,71 @@ coeffG = [158.7163,223.3967,227.3665,172.707974,228.2431];
 coeffH = [-74.8731,-241.8264,-110.5271,0,-393.5224];
 
 t1 = ((T)/1000); % 1/K 827C or 1100K temperature for mean capacity
+
 Cpbank = coeffA + coeffB.*t1 + coeffC.*t1^2 + coeffD.*t1^3 + coeffE./t1^2; % J/(mol K) heat capacities
 Cpa = Cpbank(1); % J/(mol K) heat capacity
 Cpb = Cpbank(2); % J/(mol K) heat capacity
 Cpc = Cpbank(3); % J/(mol K) heat capacity
 Cpd = Cpbank(4); % J/(mol K) heat capacity
 Cpe = Cpbank(5); % J/(mol K) heat capacity
-
 dCp1std = 46.4252; % J/mol K basis h2o
 dCp2std = 3.22087; % J/mol K basis h2o
 dCp3std = 49.6461; % J/mol K basis ch4
-
 dCp1 = Cpc + 3*Cpd - Cpb - Cpa; % J/mol K basis h2o
 dCp2 = Cpd + Cpe - Cpc - Cpb; % J/mol K basis h2o
 dCp3 = 4*Cpd + Cpe - 2*Cpb - Cpa; % J/mol K basis ch4
-
 Hrx1 = 205700; % J/mol at 25 basis h2o
 Hrx2 = -41550; % J/mol at 25 basis h2o
 Hrx3 = 164150; % J/mol at 25 basis ch4
-
 dHrx1 = Hrx1 + (dCp1+dCp1std)/2*(T-(298.15)); % J/mol Heat of reaction (reference 25degC)
 dHrx2 = Hrx2 + (dCp2+dCp2std)/2*(T-(298.15)); % J/mol Heat of reaction (reference 25degC)
 dHrx3 = Hrx3 + (dCp3+dCp3std)/2*(T-(298.15)); % J/mol Heat of reaction (reference 25degC)
+
+% Entropy
+sbank = coeffA.*log(t1)+coeffB.*t1+(coeffC.*t1.^2)./2+(coeffD.*t1.^3)./3-coeffE./(2.*t1.^2)+coeffG;
+sTa = sbank(1); % J/mol entropy
+sTb = sbank(2); % J/mol entropy
+sTc = sbank(3); % J/mol entropy
+sTd = sbank(4); % J/mol entropy
+sTe = sbank(5); % J/mol entropy
+
+% Enthalpy
+h298bank = [-74400.000 -241830.000 -110530.000 0.000 -393910.000]; % J/mol enthalpy at standard conditions
+hdiffbank = (coeffA.*t1+coeffB.*t1.^2./2+coeffC.*t1.^3./3+coeffD*t1.^4./4-coeffE./t1+coeffF-coeffH)*1000;
+hbank = h298bank + hdiffbank; % J/mol enthalpy at standard conditions
+hTa = hbank(1); % J/mol enthalpy
+hTb = hbank(2); % J/mol enthalpy
+hTc = hbank(3); % J/mol enthalpy
+hTd = hbank(4); % J/mol enthalpy
+hTe = hbank(5); % J/mol enthalpy
+
+Gbank = hbank - T.*sbank; % J/mol Gibbs free
+gTa = Gbank(1); % J/mol gibbs free energy
+gTb = Gbank(2); % J/mol gibbs free energy
+gTc = Gbank(3); % J/mol gibbs free energy
+gTd = Gbank(4); % J/mol gibbs free energy
+gTe = Gbank(5); % J/mol gibbs free energy
+
+dG1 = 3*Gbank(4)+Gbank(3)-Gbank(2)-Gbank(1);
+dG2 = Gbank(5)+Gbank(4)-Gbank(2)-Gbank(3);
+dG3 = 4*Gbank(4)+Gbank(5)-2*Gbank(2)-Gbank(1);
+
+% Reaction equilibrium constants
+K1 = exp(-dG1/(Rgas.*T));
+K2 = exp(-dG2/(Rgas.*T));
+K3 = exp(-dG3/(Rgas.*T));
 
 % Reaction rate constants
 k1 = glbp(1)*4.22*10^15 * exp(-240100/(Rgas.*T)); % rate coefficients [kmol bar0.5 / kgcat h]
 k2 = glbp(2)*1955000 * exp(-67130/(Rgas.*T)); % rate coefficients [kmol / kgcat h]
 k3 = glbp(3)*1.02*10^15 * exp(-243900/(Rgas.*T)); % rate coefficients [kmol bar0.5 / kgcat h]
 
-% Reaction equilibrium constants
 
-K1 = exp(30.42-27106./T); % reaction rate constant [bar2]
-K2 = exp(-3.798+4160./T); % reaction rate constant -
-% K3 = exp(34.218-31266./T); % reaction rate constant [bar2]
-K3 = K1.*K2;
+
+% K1 = exp(30.42-27106./T) % reaction rate constant [bar2]
+% K2 = exp(-3.798+4160./T); % reaction rate constant -
+% K3 = exp(34.218-31266./T) % reaction rate constant [bar2]
+% K3 = K1.*K2;
 
 % Adsorbtion constants
 Ka = 6.65*10^-4*exp(38280/(Rgas.*T)); % ch4 bar-1
@@ -115,13 +146,13 @@ dPdW = glbp(6)*(-alpha/2)*(P0/(P/P0))*(T/T0)*(Ft/Ft0);
 % dTwdW =  ((sb*3600/rhob * a * (Ta.^4 - Tw.^4)) - (0.75*U*3600/rhob * a * (Tw - T)))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
 
 
-dTdW = ((U*3600/rhob * a * (Ta - T)) + glbp(5)*(-1*r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
+dTdW = ((U*3600/rhob * a * (Tw - T)) + glbp(5)*(-1*r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
 dTadW = 0;
 dQrdW = -1*(-r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3);
-dQhdW = (U*3600/rhob * a * (Ta - T));
-dTwdW = 0*((sb*3600*a*(Ta.^4-Tw.^4)/(rhob))-(U*3600/rhob * a * (Tw - T)))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);;
+dQhdW = (U*3600/rhob * a * (Tw - T));
+dTwdW = ((sb*3600*a*(Ta.^4-Tw.^4)/(rhob))-(U*3600/rhob * a * (Tw - T)))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);;
 
-% dTdW = ((glbp(4)*U*3600/rhoc * a * (Ta - T)) + glbp(5)*(-1*r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
+% dTdW = ((glb-p(4)*U*3600/rhoc * a * (Ta - T)) + glbp(5)*(-1*r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
 % dTdW = ((-1*glbp(4)*U*3600*a*(T-Ta)/(rhob)) + glbp(5)*(-1*r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3))/(Fa*1000*Cpa + Fb*1000*Cpb + Fc*1000*Cpc + Fd*1000*Cpd + Fe*1000*Cpe);
 % dTadW = 0;
 % dQrdW = (-r1*1000 * dHrx1 - r2*1000 * dHrx2 - r3*1000 * dHrx3);

@@ -12,17 +12,18 @@ clc
 global P0 T0 Ft0 rhoc U a Rgas alpha rlist glbp Wspan2 rhob Ac sb hi
 % -- DECLARATIONS OF INPUT PARAMETERS
 % Wspan = linspace(0,20000,50000); % Range for the weight of the catalyst kg (xaxis of produced graphs)
-Wspan = (0:5:60000); % Range for the weight of the catalyst kg (xaxis of produced graphs)
+Wspan = (0:5:70000); % Range for the weight of the catalyst kg (xaxis of produced graphs)
 
 rlist = [];
 
 % Simulation options [0/1]
 % r1,r2,r3,heating,reactionheat,dP, inletflow scale
-glbp = [1 0 0 1 1 1 1];
+% glbp = [1 0 0 1 1 1 1];
+glbp = [1 1 1 1 1 1 1];
 
 
 P0 = 20*10^5; % Pa inlet pressure
-T0 = 500+273.15; % K inlet temperature
+T0 = 580+273.15; % K inlet temperature
 Ta0 = 1200+273.15; % K inlet coolant temperature
 % a-ch4 b-h2o c-co d-h2 e-co2
 % Fa0 = glbp(7)*1292.0; % kmol/h inlet ch4 flow rate
@@ -31,11 +32,11 @@ Ta0 = 1200+273.15; % K inlet coolant temperature
 % Fd0 = glbp(7)*367.20; % kmol/h inlet h2 flow rate
 % Fe0 = glbp(7)*1; % kmol/h inlet co2 flow rate
 
-Fa0 = glbp(7)*1292.0; % kmol/h inlet ch4 flow rate
-Fb0 = glbp(7)*5350.4; % kmol/h inlet h2o flow rate 3226
-Fc0 = glbp(7)*149.60; % kmol/h inlet co flow rate
-Fd0 = glbp(7)*367.2; % kmol/h inlet h2 flow rate
-Fe0 = glbp(7)*1; % kmol/h inlet co2 flow rate
+Fa0 = glbp(7)*1274.0; % kmol/h inlet ch4 flow rate
+Fb0 = glbp(7)*5352.5; % kmol/h inlet h2o flow rate 3226
+Fc0 = glbp(7)*147.51; % kmol/h inlet co flow rate
+Fd0 = glbp(7)*362.07; % kmol/h inlet h2 flow rate
+Fe0 = glbp(7)*0; % kmol/h inlet co2 flow rate
 
 Ft0 = Fa0 + Fb0 + Fc0 + Fd0 + Fe0; % kmol/h inlet total flow rate
 % z = 1; % ideal gas for now
@@ -54,10 +55,11 @@ U = 100; % W/(m² K) overall heat transfer coefficient
 
 
 % --Catalyst data
-e = 0.528; % - voidage
-rhoc = 930; % kg/m³ particle density
-rhob = rhoc*(1-e);
-Dp = 0.025; % m particle diameter
+e = 0.605; % - voidage
+rhoc = 2355.2; % kg/m³ particle density
+rhob = 1362.0; % kg/m³ bed density
+e = 0.605
+Dp = 0.0174131; % m particle diameter
 
 % % -- PRESSURE DROP CALCULATIONS
 m = (Fa0*16.04+Fb0*18+Fc0*28.01+Fd0*2+Fe0*44)/3600; % kg/s Feed mass flow (used for pressure drop)
@@ -82,10 +84,11 @@ i0 = [Fa0; Fb0; Fc0; Fd0; Fe0; P0; T0; Ta0; 0; 0; T0;]; % Initial values for the
 [w0,y0]=ode45(@ODEsolver,Wspan,i0); % Range of solved values for a range of catalyst mass stored in this array
 % % -- INTERPOLATION OF OUTPUT DATA
 % disp(y0(:,1));
-Wf = interp1q(1-y0(:,1)./Fa0,w0,0.975) % kg needed mass of catalyst for 4750kmol/h of H2
+Wf = interp1q(1-y0(:,1)./Fa0,w0,0.90) % kg needed mass of catalyst for 4750kmol/h of H2
 % Wf = interp1q(y0(:,1)./Fa0,w0,50.0) % kg needed mass of catalyst for 4750kmol/h of H2
 Tf = interp1(w0,y0(:,7),Wf)-273.15; % C outlet temperature
 Taf = interp1(w0,y0(:,8),Wf)-273.15; % C outlet coolant temperature
+Twf = interp1(w0,y0(:,11),Wf)-273.15; % C outlet coolant temperature
 Pf = interp1(w0,y0(:,6),Wf); % Pa outlet pressure
 Lf = Wf/(Ac*(1-e)*rhoc); % m Length of reactor
 conv = 1-interp1(w0,y0(:,1),Wf)./Fa0; % - conversation of methane
@@ -141,19 +144,19 @@ xlabel('W, kg')
 ylabel('Q, MW')
 title('Heat consumption')
 
+axelf =(y0(:,1));
 fig4 = figure;
 hold all;
-graph4 = plot(w0,1-(y0(:,1))./Fa0);
-legend('CH4')
-xlabel('W, kg')
-ylabel('Mole Fraction')
+graph4 = plot([Lf Lf], [0 conv], [0 Lf],[conv conv],w0/(Ac*(1-e)*rhoc),1-axelf./Fa0,'*');
+xlabel('Length of reactor tube, m')
+ylabel('Conversion')
 title('Methane Conversion')
 
 fig5 = figure;
 hold all;
-graph5 = plot(w0,(y0(:,7))-273,w0,(y0(:,8))-273,w0,(y0(:,11))-273);
-legend('Reactor','Furnace','Wall')
-xlabel('W, kg')
+graph5 = plot([Lf Lf], [0 Taf],w0/(Ac*(1-e)*rhoc),(y0(:,7))-273,'*',w0/(Ac*(1-e)*rhoc),(y0(:,8))-273,'*',w0/(Ac*(1-e)*rhoc),(y0(:,11))-273,'*');
+legend('','Reactor','Furnace','Wall')
+xlabel('Length of reactor tube, m')
 ylabel('Temperature, C')
 title('Temperature Profile')
 
@@ -176,7 +179,7 @@ rlist=rlist';
 % % fprintf([repmat('%7.4e    ',1,size(rlist,2)),'\n'],rlist')
 % % L0 = w0./(Ac*(1-e)*rhoc) % Length of the reactor
 % disp(1-(y0(1:10,1)./Fa0));
-avgQ = Qff/(Nt*Dt*3.14*Lf)
+avgQ = Qff/(Nt*Dt*3.14*Lf)*1000 %kW/m2
 % Twf = interp1(w0,y0(:,11),Wf)-273.15 % C outlet coolant temperature
 acpF = Qff/1;
 Atubes = Nt*Dt*3.14*Lf
